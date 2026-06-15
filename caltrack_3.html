@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CalTrack</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#060e18;font-family:'Inter',system-ui,sans-serif;}
+  input,select,button{font-family:inherit;}
+  ::-webkit-scrollbar{width:6px;} ::-webkit-scrollbar-track{background:#0f1923;} ::-webkit-scrollbar-thumb{background:#1e3a5f;border-radius:3px;}
+  @media print{.noprint{display:none!important;}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// ── CREDENTIALS ──────────────────────────────────────────────
+const APP_USER = "llblue";
+const APP_PASS = "caldue365";
+const ADMIN_CODE = "ADMIN1";
+
+// ── THEME — LL Blue engineering ──────────────────────────────
+const C = {
+  bg:       "#060e18",
+  surface:  "#0d1f35",
+  card:     "#112240",
+  border:   "#1e3a5f",
+  accent:   "#1a6eb5",
+  accentLt: "#2d8fe8",
+  accentDim:"#0e3d6b",
+  text:     "#e2eaf4",
+  muted:    "#5a7a99",
+  faint:    "#1a2f47",
+  green:    "#86efac", greenBg: "#0d2b1a",
+  yellow:   "#fcd34d", yellowBg:"#2a1f00",
+  red:      "#fca5a5", redBg:   "#2b0d0d",
+  blue:     "#93c5fd", blueBg:  "#0d1e3b",
+};
+
+// ── TOOLS ────────────────────────────────────────────────────
+const TOOLS_DEFAULT = [
+  {id:"T001",name:"NetAlly LinkRunner AT 2000",        cat:"Network Testing",      mfr:"NetAlly",        serial:"",nextCal:""},
+  {id:"T002",name:"Fluke Clamp Meter",                 cat:"Electrical Testing",   mfr:"Fluke",          serial:"",nextCal:""},
+  {id:"T003",name:"Red Test Leads",                    cat:"Electrical Testing",   mfr:"",               serial:"",nextCal:""},
+  {id:"T004",name:"CHL-468 Cable Tester",              cat:"Cable Testing",        mfr:"",               serial:"",nextCal:""},
+  {id:"T005",name:"NSS-468BAF Cable Tester",           cat:"Cable Testing",        mfr:"",               serial:"",nextCal:""},
+  {id:"T006",name:"VFL HT-30 Visual Fault Locator",    cat:"Fiber Optic",          mfr:"",               serial:"",nextCal:""},
+  {id:"T007",name:"Multimode Fiber Patch Cable (OM3)", cat:"Fiber Optic",          mfr:"",               serial:"",nextCal:""},
+  {id:"T008",name:"Single-mode Fiber Patch Cable",     cat:"Fiber Optic",          mfr:"",               serial:"",nextCal:""},
+  {id:"T009",name:"Fiber Optic Cleaner",               cat:"Fiber Optic",          mfr:"",               serial:"",nextCal:""},
+  {id:"T010",name:"HART Field Communicator",           cat:"Field Instrumentation",mfr:"",               serial:"",nextCal:""},
+  {id:"T011",name:"VEGA Connect",                      cat:"Field Instrumentation",mfr:"VEGA",           serial:"",nextCal:""},
+  {id:"T012",name:"Fluke Networks Versiv 2 (Main)",    cat:"Cable Certification",  mfr:"Fluke Networks", serial:"",nextCal:""},
+  {id:"T013",name:"Fluke Networks Versiv 2 (Remote)",  cat:"Cable Certification",  mfr:"Fluke Networks", serial:"",nextCal:""},
+  {id:"T014",name:"Laptop",                            cat:"Computing",            mfr:"",               serial:"",nextCal:""},
+  {id:"T015",name:"Zebra Label Printer",               cat:"Computing",            mfr:"Zebra",          serial:"",nextCal:""},
+  {id:"T016",name:"Multimeter Test Lead Set",          cat:"Electrical Testing",   mfr:"",               serial:"",nextCal:""},
+  {id:"T017",name:"Flashlight",                        cat:"Hand Tools",           mfr:"",               serial:"",nextCal:""},
+  {id:"T018",name:"Drill Bit Set",                     cat:"Hand Tools",           mfr:"",               serial:"",nextCal:""},
+  {id:"T019",name:"Fluke Clamp Meter Box",             cat:"Electrical Testing",   mfr:"Fluke",          serial:"",nextCal:""},
+  {id:"T020",name:"NetScout Bag",                      cat:"Carrying Case",        mfr:"NetScout",       serial:"",nextCal:""},
+  {id:"T021",name:"Fiber Optic Patch Cable (Orange)",  cat:"Fiber Optic",          mfr:"",               serial:"",nextCal:""},
+  {id:"T022",name:"Fiber Optic Patch Cable (Yellow)",  cat:"Fiber Optic",          mfr:"",               serial:"",nextCal:""},
+  {id:"T023",name:"RJ45 Crimping Tool",                cat:"Cable Testing",        mfr:"",               serial:"",nextCal:""},
+  {id:"T024",name:"Tone Generator / Probe Kit",        cat:"Network Testing",      mfr:"",               serial:"",nextCal:""},
+  {id:"T025",name:"Cable Stripper",                    cat:"Cable Testing",        mfr:"",               serial:"",nextCal:""},
+  {id:"T026",name:"Klein Tools Scout Pro 3",           cat:"Cable Testing",        mfr:"Klein Tools",    serial:"",nextCal:""},
+];
+
+const CABLE_TYPES = ["CAT5e","CAT6","CAT6A","CAT7","RG59","RG6","RJ11","RJ12","Other"];
+const KIT = ["Scout Pro 3 Main Tester","Self-Storing Remote (#1)","LAN Locator Remotes (RJ45)","Coax Locator Remotes (F-conn)","Coaxial Barrel Adapters","RJ45 Jumper Cable(s)","RJ11 Jumper Cable(s)","RJ12 Jumper Cable(s)","Carrying Case","9V Battery (installed)"];
+
+// ── HELPERS ──────────────────────────────────────────────────
+const ld = (k,fb) => { try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;} };
+const sv = (k,v) => { try{localStorage.setItem(k,JSON.stringify(v));}catch{} };
+const daysUntil = d => d ? Math.ceil((new Date(d)-new Date())/86400000) : null;
+const calColor = (d, checkedOut) => {
+  if(d===null) return checkedOut
+    ? {bg:C.yellowBg, fg:C.yellow, label:"Checked Out"}
+    : {bg:C.greenBg,  fg:C.green,  label:"Available"};
+  if(d<0)      return {bg:C.redBg,   fg:C.red,     label:"OVERDUE"};
+  if(d<=30)    return {bg:C.yellowBg,fg:C.yellow,  label:`${d}d`};
+               return {bg:C.greenBg, fg:C.green,   label:`${d}d`};
+};
+
+// ── SHARED STYLES ────────────────────────────────────────────
+const S = {
+  page:   {padding:"1.25rem",maxWidth:1080,margin:"0 auto"},
+  card:   {background:C.card,borderRadius:10,padding:"1.1rem",border:`1px solid ${C.border}`,marginBottom:"0.85rem"},
+  h1:     {fontSize:"1.25rem",fontWeight:800,color:C.text,margin:"0 0 1rem"},
+  h2:     {fontSize:"0.88rem",fontWeight:700,color:C.muted,margin:"0 0 0.7rem",textTransform:"uppercase",letterSpacing:"0.06em"},
+  lbl:    {display:"block",fontSize:"0.7rem",color:C.muted,marginBottom:"0.25rem",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em"},
+  inp:    {width:"100%",background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,color:C.text,padding:"0.48rem 0.7rem",fontSize:"0.88rem",boxSizing:"border-box",outline:"none"},
+  sel:    {width:"100%",background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,color:C.text,padding:"0.48rem 0.7rem",fontSize:"0.88rem",boxSizing:"border-box"},
+  btnA:   {background:C.accent,color:"#fff",border:"none",borderRadius:6,padding:"0.52rem 1.2rem",fontWeight:700,fontSize:"0.85rem",cursor:"pointer"},
+  btnB:   {background:C.faint,color:C.muted,border:`1px solid ${C.border}`,borderRadius:6,padding:"0.52rem 1rem",fontWeight:600,fontSize:"0.83rem",cursor:"pointer"},
+  btnDel: {background:C.redBg,color:C.red,border:"none",borderRadius:6,padding:"0.3rem 0.65rem",fontWeight:600,fontSize:"0.76rem",cursor:"pointer"},
+  g2:     {display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.85rem"},
+  g3:     {display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0.85rem"},
+  chip:   (bg,fg)=>({display:"inline-block",padding:"0.18rem 0.6rem",borderRadius:10,background:bg,color:fg,fontWeight:700,fontSize:"0.7rem",letterSpacing:"0.04em"}),
+  alert:  t=>({padding:"0.65rem 0.9rem",borderRadius:6,marginBottom:"0.7rem",fontSize:"0.83rem",
+    background:t==="ok"?C.greenBg:t==="err"?C.redBg:C.blueBg,
+    color:t==="ok"?C.green:t==="err"?C.red:C.blue,
+    border:`1px solid ${t==="ok"?"#166534":t==="err"?"#7f1d1d":C.accentDim}`}),
+};
+
+// ── BARCODE ──────────────────────────────────────────────────
+function Barcode({toolId,name,serial}){
+  const ref = useRef();
+  const label = `${toolId} | ${name}${serial?" | SN:"+serial:""}`;
+  useEffect(()=>{
+    const canvas=ref.current; if(!canvas)return;
+    const ctx=canvas.getContext("2d");
+    const W=canvas.width,H=canvas.height;
+    ctx.fillStyle="#fff"; ctx.fillRect(0,0,W,H);
+    const bars=[];
+    bars.push({w:6,b:false},{w:2,b:true},{w:2,b:false},{w:2,b:true});
+    for(let i=0;i<label.length;i++){
+      const c=label.charCodeAt(i);
+      [c&1?3:1,c&2?1:2,c&4?2:1,c&8?3:1,c&16?1:2,1].forEach((w,idx)=>bars.push({w,b:idx%2===0}));
+    }
+    bars.push({w:2,b:true},{w:2,b:false},{w:3,b:true},{w:6,b:false});
+    const total=bars.reduce((s,b)=>s+b.w,0);
+    const uw=(W-12)/total; let x=6;
+    bars.forEach(({w,b})=>{
+      if(b){ctx.fillStyle="#000";ctx.fillRect(Math.round(x),2,Math.max(1,Math.round(uw*w)),H-20);}
+      x+=uw*w;
+    });
+    ctx.fillStyle="#333"; ctx.font="8px monospace"; ctx.textAlign="center";
+    const disp=label.length>58?label.slice(0,55)+"…":label;
+    ctx.fillText(disp,W/2,H-4);
+  },[label]);
+  return <canvas ref={ref} width={320} height={68} style={{display:"block",borderRadius:3}}/>;
+}
+
+// ── LOGIN ────────────────────────────────────────────────────
+function Login({onLogin}){
+  const [u,setU]=useState(""); const [p,setP]=useState("");
+  const [err,setErr]=useState(""); const [show,setShow]=useState(false);
+  function go(){
+    if(u.trim()===APP_USER&&p===APP_PASS){onLogin();}
+    else{setErr("Incorrect username or password.");setP("");}
+  }
+  return(
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{width:320}}>
+        <div style={{textAlign:"center",marginBottom:"2rem"}}>
+          <div style={{fontSize:"2.2rem",fontWeight:900,color:C.accentLt,letterSpacing:"0.1em"}}>CALTRACK</div>
+          <div style={{fontSize:"0.72rem",color:C.muted,marginTop:"0.3rem",letterSpacing:"0.12em",textTransform:"uppercase"}}>Tool Calibration & Tracking</div>
+          <div style={{width:40,height:3,background:C.accent,margin:"0.7rem auto 0",borderRadius:2}}/>
+        </div>
+        <div style={S.card}>
+          {err&&<div style={S.alert("err")}>{err}</div>}
+          <div style={{marginBottom:"0.75rem"}}>
+            <label style={S.lbl}>Username</label>
+            <input style={S.inp} value={u} onChange={e=>setU(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()} autoFocus/>
+          </div>
+          <div style={{marginBottom:"1rem"}}>
+            <label style={S.lbl}>Password</label>
+            <div style={{position:"relative"}}>
+              <input style={{...S.inp,paddingRight:"3rem"}} type={show?"text":"password"} value={p} onChange={e=>setP(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()}/>
+              <button onClick={()=>setShow(!show)} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:"0.75rem"}}>{show?"Hide":"Show"}</button>
+            </div>
+          </div>
+          <button style={{...S.btnA,width:"100%",padding:"0.65rem"}} onClick={go}>Sign In</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── DASHBOARD ────────────────────────────────────────────────
+function Dashboard({tools,checkouts}){
+  const overdue = tools.filter(t=>{const d=daysUntil(t.nextCal);return d!==null&&d<0;});
+  const soon    = tools.filter(t=>{const d=daysUntil(t.nextCal);return d!==null&&d>=0&&d<=30;});
+  const out     = Object.keys(checkouts).length;
+  const noCal   = tools.filter(t=>!t.nextCal);
+  const stats   = [["Total Tools",tools.length,C.accentLt],["Overdue Cal",overdue.length,overdue.length?C.red:C.green],["Due ≤30d",soon.length,soon.length?C.yellow:C.green],["Checked Out",out,C.blue],["No Cal Date",noCal.length,noCal.length?C.yellow:C.green]];
+  return(
+    <div>
+      <h1 style={S.h1}>Dashboard</h1>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))",gap:"0.85rem",marginBottom:"1.25rem"}}>
+        {stats.map(([l,v,color])=>(
+          <div key={l} style={{...S.card,marginBottom:0,textAlign:"center",padding:"1rem 0.5rem"}}>
+            <div style={{fontSize:"2rem",fontWeight:900,color}}>{v}</div>
+            <div style={{fontSize:"0.68rem",color:C.muted,textTransform:"uppercase",letterSpacing:"0.06em",marginTop:"0.2rem"}}>{l}</div>
+          </div>
+        ))}
+      </div>
+      {overdue.length>0&&<div style={{...S.card,borderLeft:`3px solid ${C.red}`}}><h2 style={{...S.h2,color:C.red}}>⚠ Overdue</h2>{overdue.map(t=><div key={t.id} style={{fontSize:"0.83rem",color:C.red,padding:"0.18rem 0"}}>{t.id} — {t.name}</div>)}</div>}
+      {soon.length>0&&<div style={{...S.card,borderLeft:`3px solid ${C.yellow}`}}><h2 style={{...S.h2,color:C.yellow}}>⏰ Due Within 30 Days</h2>{soon.map(t=><div key={t.id} style={{fontSize:"0.83rem",color:C.yellow,padding:"0.18rem 0"}}>{t.id} — {t.name} ({daysUntil(t.nextCal)}d)</div>)}</div>}
+      {out>0&&<div style={{...S.card,borderLeft:`3px solid ${C.accentLt}`}}><h2 style={{...S.h2,color:C.blue}}>📦 Checked Out</h2>{Object.entries(checkouts).map(([id,co])=>{const t=tools.find(x=>x.id===id);return<div key={id} style={{fontSize:"0.83rem",color:C.blue,padding:"0.18rem 0"}}>{id} — {t?.name} · {co.location} · {co.by} · Out: {co.outAt}</div>;})}</div>}
+    </div>
+  );
+}
+
+// ── TOOLS PAGE ───────────────────────────────────────────────
+function ToolsPage({tools,setTools,isAdmin,checkouts,setCheckouts,tech}){
+  const [toolTab,setToolTab]=useState("tools");
+  const [history,setHistory]=useState(()=>ld("ct_hist",[]));
+  const [search,setSearch]=useState("");
+  const [editId,setEditId]=useState(null);
+  const [eSerial,setESerial]=useState("");
+  const [eCal,setECal]=useState("");
+  const [coLoc,setCoLoc]=useState({});
+  const [msg,setMsg]=useState(null);
+  const flash=(t,x)=>{setMsg({t,x});setTimeout(()=>setMsg(null),3000);};
+
+  const filtered=tools.filter(t=>t.name.toLowerCase().includes(search.toLowerCase())||t.cat.toLowerCase().includes(search.toLowerCase())||t.id.toLowerCase().includes(search.toLowerCase()));
+
+  function saveEdit(id){
+    setTools(p=>p.map(t=>t.id===id?{...t,serial:eSerial,nextCal:eCal}:t));
+    setEditId(null); flash("ok","Saved.");
+  }
+  function fmtTs(d){return d.toLocaleString("en-US",{weekday:"short",year:"numeric",month:"short",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:true});}
+  function checkout(id){
+    const loc=(coLoc[id]||"").trim();
+    if(!loc)return flash("err","Enter location first.");
+    if(checkouts[id])return flash("err","Already checked out.");
+    const outAt=fmtTs(new Date());
+    setCheckouts(p=>({...p,[id]:{by:tech,location:loc,outAt,inAt:null}}));
+    setCoLoc(p=>({...p,[id]:""})); flash("ok","Checked out.");
+  }
+  function checkin(id){
+    const inAt=fmtTs(new Date());
+    const co=checkouts[id];
+    if(co){
+      const t=tools.find(x=>x.id===id);
+      const hist=ld("ct_hist",[]);
+      hist.unshift({toolId:id,toolName:t?.name||id,by:co.by,location:co.location,outAt:co.outAt,inAt});
+      sv("ct_hist",hist);
+    }
+    setCheckouts(p=>{const n={...p};delete n[id];return n;}); flash("ok","Checked in.");
+  }
+
+  function exportCoHistory(){
+    const h=["Tool ID","Tool Name","Checked Out By","Location","Checked Out","Checked In"];
+    const rows=history.map(l=>[l.toolId,l.toolName,l.by,l.location,l.outAt,l.inAt||"Still Out"]);
+    const blob=new Blob([[h,...rows].map(r=>r.map(v=>`"${v}"`).join(",")).join("\n")],{type:"text/csv"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`checkout_history_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  }
+  return(
+    <div>
+      <div style={{display:"flex",gap:"0.75rem",alignItems:"center",marginBottom:"1rem",flexWrap:"wrap"}}>
+        <h1 style={{...S.h1,margin:0,flex:1}}>Tools ({tools.length})</h1>
+        <input style={{...S.inp,width:210}} placeholder="Search…" value={search} onChange={e=>setSearch(e.target.value)}/>
+      </div>
+      <div style={{display:"flex",gap:"0.4rem",marginBottom:"1rem"}}>
+        <button style={toolTab==="tools"?{...S.btnA,padding:"0.38rem 0.85rem",fontSize:"0.8rem"}:{...S.btnB,padding:"0.38rem 0.85rem",fontSize:"0.8rem"}} onClick={()=>setToolTab("tools")}>All Tools</button>
+        <button style={toolTab==="history"?{...S.btnA,padding:"0.38rem 0.85rem",fontSize:"0.8rem"}:{...S.btnB,padding:"0.38rem 0.85rem",fontSize:"0.8rem"}} onClick={()=>setToolTab("history")}>Checkout History</button>
+      </div>
+      {msg&&<div style={S.alert(msg.t)}>{msg.x}</div>}
+      {toolTab==="history"&&(
+        <div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"0.75rem"}}>
+            <h2 style={{...S.h2,margin:0}}>Checkout History ({history.length})</h2>
+            <button style={S.btnA} onClick={exportCoHistory}>Export CSV</button>
+          </div>
+          {history.length===0&&<div style={{...S.card,textAlign:"center",color:C.muted,padding:"2rem"}}>No checkout history yet.</div>}
+          {history.map((l,i)=>(
+            <div key={i} style={{...S.card,padding:"0.8rem 1rem",marginBottom:"0.45rem"}}>
+              <div style={{display:"flex",flexWrap:"wrap",gap:"0.5rem",alignItems:"center",marginBottom:"0.35rem"}}>
+                <span style={{fontWeight:700,fontSize:"0.88rem",color:C.text}}>{l.toolName}</span>
+                <span style={{fontSize:"0.7rem",color:C.muted,background:C.faint,padding:"0.1rem 0.45rem",borderRadius:4}}>{l.toolId}</span>
+                <span style={S.chip(l.inAt?C.greenBg:C.yellowBg,l.inAt?C.green:C.yellow)}>{l.inAt?"Returned":"Still Out"}</span>
+                <span style={{fontSize:"0.78rem",color:C.muted,marginLeft:"auto"}}>by <strong style={{color:C.text}}>{l.by}</strong> · {l.location}</span>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.5rem",marginTop:"0.3rem"}}>
+                <div style={{background:C.bg,borderRadius:6,padding:"0.5rem 0.7rem",borderLeft:`3px solid ${C.accentLt}`}}>
+                  <div style={{fontSize:"0.66rem",color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:"0.15rem"}}>Checked Out</div>
+                  <div style={{fontSize:"0.82rem",color:C.text,fontWeight:600}}>{l.outAt}</div>
+                </div>
+                <div style={{background:C.bg,borderRadius:6,padding:"0.5rem 0.7rem",borderLeft:`3px solid ${l.inAt?C.green:C.yellow}`}}>
+                  <div style={{fontSize:"0.66rem",color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:"0.15rem"}}>Checked In</div>
+                  <div style={{fontSize:"0.82rem",color:l.inAt?C.text:C.yellow,fontWeight:600}}>{l.inAt||"Not yet returned"}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {toolTab==="tools"&&filtered.map(t=>{
+        const d=daysUntil(t.nextCal); const co=checkouts[t.id]; const cc=calColor(d,!!co); const editing=editId===t.id;
+        return(
+          <div key={t.id} style={S.card}>
+            <div style={{display:"flex",flexWrap:"wrap",gap:"0.5rem",alignItems:"flex-start"}}>
+              <div style={{flex:1,minWidth:180}}>
+                <div style={{display:"flex",gap:"0.45rem",alignItems:"center",flexWrap:"wrap"}}>
+                  <span style={{fontWeight:700,color:C.text,fontSize:"0.92rem"}}>{t.name}</span>
+                  <span style={{fontSize:"0.68rem",color:C.muted,background:C.faint,padding:"0.1rem 0.45rem",borderRadius:4}}>{t.id}</span>
+                  <span style={S.chip(cc.bg,cc.fg)}>{cc.label}</span>
+                  {co&&<span style={S.chip(C.yellowBg,C.yellow)}>Out: {co.by}</span>}
+                </div>
+                <div style={{fontSize:"0.76rem",color:C.muted,marginTop:"0.2rem"}}>{t.cat} · {t.mfr||"—"} · SN: <span style={{color:C.text}}>{t.serial||"not set"}</span></div>
+              </div>
+              <div style={{display:"flex",gap:"0.45rem",flexWrap:"wrap",alignItems:"center"}}>
+                {!co?(
+                  <>
+                    <input style={{...S.inp,width:130}} placeholder="Location…" value={coLoc[t.id]||""} onChange={e=>setCoLoc(p=>({...p,[t.id]:e.target.value}))}/>
+                    <button style={S.btnA} onClick={()=>checkout(t.id)}>Check Out</button>
+                  </>
+                ):(
+                  <button style={{...S.btnA,background:C.faint,color:C.muted}} onClick={()=>checkin(t.id)}>Check In</button>
+                )}
+                {isAdmin&&<button style={S.btnB} onClick={()=>{setEditId(editing?null:t.id);setESerial(t.serial||"");setECal(t.nextCal||"");}}>{editing?"Cancel":"Edit"}</button>}
+              </div>
+            </div>
+            {co&&<div style={{marginTop:"0.4rem",fontSize:"0.76rem",color:C.muted}}>Checked out by <strong style={{color:C.text}}>{co.by}</strong> · {co.location}<br/>🕐 Out: {co.outAt}</div>}
+            {editing&&(
+              <div style={{...S.g2,marginTop:"0.85rem",paddingTop:"0.85rem",borderTop:`1px solid ${C.border}`}}>
+                <div><label style={S.lbl}>Serial Number</label><input style={S.inp} value={eSerial} onChange={e=>setESerial(e.target.value)} placeholder="e.g. AB12345"/></div>
+                <div><label style={S.lbl}>Next Cal Date</label><input style={S.inp} type="date" value={eCal} onChange={e=>setECal(e.target.value)}/></div>
+                <div style={{gridColumn:"1/-1"}}><button style={S.btnA} onClick={()=>saveEdit(t.id)}>Save</button></div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── SCOUT PRO 3 ──────────────────────────────────────────────
+function ScoutPage({tech,isAdmin,tool}){
+  const [tab,setTab]=useState("log");
+  const [logs,setLogs]=useState(()=>ld("scout_logs",[]));
+  const [kit,setKit]=useState({});
+  const [msg,setMsg]=useState(null);
+  const [f,setF]=useState({loc:"",ctype:"CAT6",cid:"",result:"PASS",wmap:true,len:"",poe:false,poev:"",fault:"",notes:""});
+  const flash=(t,x)=>{setMsg({t,x});setTimeout(()=>setMsg(null),3200);};
+
+  function submit(){
+    if(!f.loc)return flash("err","Location required.");
+    const entry={id:Date.now(),date:new Date().toLocaleString(),tech,...f,len:f.len?parseFloat(f.len):null,poev:f.poe&&f.poev?parseFloat(f.poev):null};
+    const updated=[entry,...logs]; setLogs(updated); sv("scout_logs",updated);
+    setF({loc:"",ctype:"CAT6",cid:"",result:"PASS",wmap:true,len:"",poe:false,poev:"",fault:"",notes:""});
+    flash("ok","Saved.");
+  }
+  function del(id){if(!isAdmin)return;const u=logs.filter(l=>l.id!==id);setLogs(u);sv("scout_logs",u);}
+  function csv(){
+    const h=["Date","Tech","Location","Cable Type","Cable ID","Result","Wire Map","Length ft","PoE","PoE V","Fault","Notes"];
+    const rows=logs.map(l=>[l.date,l.tech,l.loc,l.ctype,l.cid,l.result,l.wmap?"Yes":"No",l.len||"",l.poe?"Yes":"No",l.poev||"",l.fault||"",l.notes||""]);
+    const blob=new Blob([[h,...rows].map(r=>r.map(v=>`"${v}"`).join(",")).join("\n")],{type:"text/csv"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`scout_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  }
+
+  const pass=logs.filter(l=>l.result==="PASS").length;
+  const rate=logs.length?Math.round(pass/logs.length*100):0;
+  const fails=logs.filter(l=>l.result==="FAIL").length;
+  const poeHits=logs.filter(l=>l.poe).length;
+
+  const TABS=[["log","Log Test"],["history","History"],["kit","Kit Check"]];
+  return(
+    <div>
+      <div style={{display:"flex",gap:"0.6rem",alignItems:"center",flexWrap:"wrap",marginBottom:"1.1rem"}}>
+        <span style={{background:C.accentDim,color:C.accentLt,fontWeight:800,fontSize:"0.68rem",padding:"0.2rem 0.55rem",borderRadius:4,letterSpacing:"0.06em"}}>CABLE TESTER</span>
+        <h1 style={{...S.h1,margin:0}}>Klein Tools Scout Pro 3</h1>
+        {tool?.serial&&<span style={S.chip(C.faint,C.muted)}>SN: {tool.serial}</span>}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"0.75rem",marginBottom:"1.25rem"}}>
+        {[["Tests",logs.length,C.accentLt],["Pass Rate",`${rate}%`,rate>=90?C.green:rate>=70?C.yellow:C.red],["Failures",fails,fails?C.red:C.green],["PoE Hits",poeHits,C.blue]].map(([l,v,color])=>(
+          <div key={l} style={{...S.card,marginBottom:0,textAlign:"center",padding:"0.9rem 0.4rem"}}>
+            <div style={{fontSize:"1.6rem",fontWeight:900,color}}>{v}</div>
+            <div style={{fontSize:"0.66rem",color:C.muted,textTransform:"uppercase",letterSpacing:"0.06em",marginTop:"0.15rem"}}>{l}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:"0.4rem",marginBottom:"1rem"}}>
+        {TABS.map(([id,lbl])=><button key={id} style={tab===id?{...S.btnA,padding:"0.4rem 0.9rem",fontSize:"0.82rem"}:{...S.btnB,padding:"0.4rem 0.9rem",fontSize:"0.82rem"}} onClick={()=>setTab(id)}>{lbl}</button>)}
+      </div>
+      {msg&&<div style={S.alert(msg.t)}>{msg.x}</div>}
+
+      {tab==="log"&&(
+        <div style={S.card}>
+          <h2 style={S.h2}>New Test Result</h2>
+          <div style={S.g2}>
+            <div><label style={S.lbl}>Location *</label><input style={S.inp} value={f.loc} onChange={e=>setF({...f,loc:e.target.value})} placeholder="e.g. Building A, Rm 204"/></div>
+            <div><label style={S.lbl}>Cable ID / Label</label><input style={S.inp} value={f.cid} onChange={e=>setF({...f,cid:e.target.value})} placeholder="e.g. CAB-01A"/></div>
+          </div>
+          <div style={{...S.g3,marginTop:"0.75rem"}}>
+            <div><label style={S.lbl}>Cable Type</label><select style={S.sel} value={f.ctype} onChange={e=>setF({...f,ctype:e.target.value})}>{CABLE_TYPES.map(t=><option key={t}>{t}</option>)}</select></div>
+            <div><label style={S.lbl}>Result</label><select style={S.sel} value={f.result} onChange={e=>setF({...f,result:e.target.value})}><option>PASS</option><option>FAIL</option><option>PARTIAL</option></select></div>
+            <div><label style={S.lbl}>Length (ft)</label><input style={S.inp} type="number" value={f.len} onChange={e=>setF({...f,len:e.target.value})} placeholder="125"/></div>
+          </div>
+          <div style={{display:"flex",gap:"1.5rem",marginTop:"0.75rem",flexWrap:"wrap",alignItems:"center"}}>
+            <label style={{display:"flex",gap:"0.4rem",alignItems:"center",cursor:"pointer",fontSize:"0.86rem",color:C.text}}><input type="checkbox" checked={f.wmap} onChange={e=>setF({...f,wmap:e.target.checked})} style={{accentColor:C.accentLt}}/>Wire Map OK</label>
+            <label style={{display:"flex",gap:"0.4rem",alignItems:"center",cursor:"pointer",fontSize:"0.86rem",color:C.text}}><input type="checkbox" checked={f.poe} onChange={e=>setF({...f,poe:e.target.checked})} style={{accentColor:C.accentLt}}/>PoE Detected</label>
+            {f.poe&&<div style={{display:"flex",alignItems:"center",gap:"0.4rem"}}><label style={{...S.lbl,margin:0}}>Voltage:</label><input style={{...S.inp,width:75}} type="number" value={f.poev} onChange={e=>setF({...f,poev:e.target.value})} placeholder="V"/></div>}
+          </div>
+          {f.result!=="PASS"&&<div style={{marginTop:"0.75rem"}}><label style={S.lbl}>Fault Description</label><input style={S.inp} value={f.fault} onChange={e=>setF({...f,fault:e.target.value})} placeholder="e.g. Open on pair 3-6"/></div>}
+          <div style={{marginTop:"0.75rem"}}><label style={S.lbl}>Notes</label><input style={S.inp} value={f.notes} onChange={e=>setF({...f,notes:e.target.value})} placeholder="Optional"/></div>
+          <button style={{...S.btnA,marginTop:"1rem"}} onClick={submit}>Save Test Result</button>
+        </div>
+      )}
+
+      {tab==="history"&&(
+        <div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"0.75rem"}}>
+            <h2 style={{...S.h2,margin:0}}>History ({logs.length})</h2>
+            <button style={S.btnA} onClick={csv}>Export CSV</button>
+          </div>
+          {logs.length===0&&<div style={{...S.card,textAlign:"center",color:C.muted,padding:"2rem"}}>No tests logged yet.</div>}
+          {logs.map(l=>{
+            const rc=l.result==="PASS"?{bg:C.greenBg,fg:C.green}:l.result==="FAIL"?{bg:C.redBg,fg:C.red}:{bg:C.yellowBg,fg:C.yellow};
+            return(
+              <div key={l.id} style={{...S.card,padding:"0.75rem 0.9rem",marginBottom:"0.45rem"}}>
+                <div style={{display:"flex",flexWrap:"wrap",gap:"0.4rem",alignItems:"center"}}>
+                  <span style={S.chip(rc.bg,rc.fg)}>{l.result}</span>
+                  <span style={{fontWeight:600,fontSize:"0.86rem",color:C.text}}>{l.ctype}</span>
+                  {l.cid&&<span style={{fontSize:"0.76rem",color:C.muted}}>#{l.cid}</span>}
+                  {l.len&&<span style={{fontSize:"0.76rem",color:C.muted}}>{l.len}ft</span>}
+                  <span style={S.chip(l.wmap?C.greenBg:C.redBg,l.wmap?C.green:C.red)}>WireMap {l.wmap?"✓":"✗"}</span>
+                  {l.poe&&<span style={S.chip(C.blueBg,C.blue)}>PoE {l.poev?`${l.poev}V`:""}</span>}
+                  <span style={{marginLeft:"auto",fontSize:"0.73rem",color:C.muted}}>{l.tech} · {l.loc}</span>
+                  <span style={{fontSize:"0.7rem",color:C.faint}}>{l.date}</span>
+                  {isAdmin&&<button style={S.btnDel} onClick={()=>del(l.id)}>Del</button>}
+                </div>
+                {(l.fault||l.notes)&&<div style={{marginTop:"0.3rem",fontSize:"0.76rem",color:C.muted}}>{l.fault&&<span>⚠ {l.fault} </span>}{l.notes&&<span style={{color:C.faint}}>— {l.notes}</span>}</div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {tab==="kit"&&(
+        <div style={S.card}>
+          <h2 style={S.h2}>Kit Checklist</h2>
+          <p style={{fontSize:"0.78rem",color:C.muted,marginTop:"-0.3rem",marginBottom:"0.9rem"}}>Verify before and after each job. Resets each session.</p>
+          {KIT.map((item,i)=>(
+            <label key={i} style={{display:"flex",gap:"0.55rem",alignItems:"center",padding:"0.45rem 0",borderBottom:`1px solid ${C.faint}`,cursor:"pointer"}}>
+              <input type="checkbox" checked={!!kit[i]} onChange={e=>setKit({...kit,[i]:e.target.checked})} style={{accentColor:C.accentLt,width:15,height:15}}/>
+              <span style={{fontSize:"0.86rem",color:kit[i]?C.green:C.text,textDecoration:kit[i]?"line-through":"none"}}>{item}</span>
+            </label>
+          ))}
+          <div style={{marginTop:"0.85rem",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontSize:"0.78rem",color:C.muted}}>{Object.values(kit).filter(Boolean).length} / {KIT.length} confirmed</span>
+            <button style={{...S.btnB,fontSize:"0.78rem",padding:"0.35rem 0.7rem"}} onClick={()=>setKit({})}>Reset</button>
+          </div>
+          <div style={{marginTop:"0.9rem",padding:"0.65rem",background:C.bg,borderRadius:6,borderLeft:`3px solid ${C.accent}`,fontSize:"0.76rem",color:C.muted}}>
+            <strong style={{color:C.accentLt}}>Note:</strong> Tone tracing requires analog probe VDV500-123 — sold separately.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── BARCODES ─────────────────────────────────────────────────
+function BarcodesPage({tools}){
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"0.85rem"}}>
+        <h1 style={{...S.h1,margin:0}}>Tool Barcodes</h1>
+        <button className="noprint" style={S.btnA} onClick={()=>window.print()}>🖨 Print All</button>
+      </div>
+      <p style={{fontSize:"0.8rem",color:C.muted,marginBottom:"1.25rem"}}>Each barcode encodes Tool ID · Name · Serial Number. Print and affix to each tool or case.</p>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:"0.85rem"}}>
+        {tools.map(t=>{
+          const d=daysUntil(t.nextCal); const cc=calColor(d,false);
+          return(
+            <div key={t.id} style={{...S.card,marginBottom:0}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"0.5rem"}}>
+                <div>
+                  <div style={{fontWeight:700,fontSize:"0.86rem",color:C.text}}>{t.name}</div>
+                  <div style={{fontSize:"0.7rem",color:C.muted,marginTop:"0.1rem"}}>{t.cat} · {t.mfr||"—"}</div>
+                </div>
+                <span style={S.chip(cc.bg,cc.fg)}>{cc.label}</span>
+              </div>
+              <Barcode toolId={t.id} name={t.name} serial={t.serial||""}/>
+              <div style={{marginTop:"0.4rem",fontSize:"0.7rem",color:C.muted}}>SN: {t.serial||<em>not set</em>} · ID: {t.id}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── ADMIN PAGE ───────────────────────────────────────────────
+function AdminPage({tools,checkouts}){
+  const [history,setHistory]=useState(()=>ld("ct_hist",[]));
+  const [filter,setFilter]=useState("");
+  const [tab,setTab]=useState("live");
+
+  function clearHistory(){
+    if(!window.confirm("Clear all checkout history? This cannot be undone."))return;
+    sv("ct_hist",[]); setHistory([]);
+  }
+  function exportAll(){
+    const h=["Tool ID","Tool Name","Checked Out By","Location","Checked Out","Checked In","Duration"];
+    const rows=history.map(l=>{
+      let dur="Still Out";
+      if(l.inAt){
+        const ms=new Date(l.inAt)-new Date(l.outAt);
+        if(!isNaN(ms)){const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000);dur=`${h}h ${m}m`;}
+      }
+      return[l.toolId,l.toolName,l.by,l.location,l.outAt,l.inAt||"Still Out",dur];
+    });
+    const blob=new Blob([[h,...rows].map(r=>r.map(v=>`"${v}"`).join(",")).join("\n")],{type:"text/csv"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`caltrack_admin_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+  }
+
+  const filtered=history.filter(l=>
+    !filter||l.toolName.toLowerCase().includes(filter.toLowerCase())||
+    l.by.toLowerCase().includes(filter.toLowerCase())||
+    l.location.toLowerCase().includes(filter.toLowerCase())
+  );
+
+  const liveOut=Object.entries(checkouts);
+
+  return(
+    <div>
+      <div style={{display:"flex",gap:"0.6rem",alignItems:"center",flexWrap:"wrap",marginBottom:"1rem"}}>
+        <h1 style={{...S.h1,margin:0,flex:1}}>Admin Panel</h1>
+        <span style={S.chip(C.accentDim,C.accentLt)}>ADMIN ACCESS</span>
+      </div>
+
+      {/* Credentials info */}
+      <div style={{...S.card,borderLeft:`3px solid ${C.accent}`,marginBottom:"1.25rem"}}>
+        <h2 style={S.h2}>Credentials</h2>
+        <div style={{fontFamily:"monospace",fontSize:"0.82rem",color:C.muted,lineHeight:2,background:C.bg,borderRadius:6,padding:"0.75rem 1rem"}}>
+          <div><span style={{color:C.accentLt}}>Username:</span> <span style={{color:C.text}}>L.LBLUE</span></div>
+          <div><span style={{color:C.accentLt}}>Password:</span> <span style={{color:C.text}}>calde365</span></div>
+          <div><span style={{color:C.accentLt}}>Admin Code:</span> <span style={{color:C.text}}>CALTRACK2026</span></div>
+        </div>
+        <p style={{fontSize:"0.76rem",color:C.muted,marginTop:"0.75rem"}}>To change credentials, open <code style={{color:C.accentLt}}>caltrack.html</code> in a text editor and update <code style={{color:C.accentLt}}>APP_USER</code> / <code style={{color:C.accentLt}}>APP_PASS</code> at the top.</p>
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:"flex",gap:"0.4rem",marginBottom:"1rem"}}>
+        <button style={tab==="live"?{...S.btnA,padding:"0.38rem 0.9rem",fontSize:"0.82rem"}:{...S.btnB,padding:"0.38rem 0.9rem",fontSize:"0.82rem"}} onClick={()=>setTab("live")}>
+          Live Checkouts {liveOut.length>0&&`(${liveOut.length})`}
+        </button>
+        <button style={tab==="history"?{...S.btnA,padding:"0.38rem 0.9rem",fontSize:"0.82rem"}:{...S.btnB,padding:"0.38rem 0.9rem",fontSize:"0.82rem"}} onClick={()=>setTab("history")}>
+          Full History ({history.length})
+        </button>
+      </div>
+
+      {/* Live checkouts */}
+      {tab==="live"&&(
+        <div>
+          <h2 style={S.h2}>Currently Checked Out</h2>
+          {liveOut.length===0&&<div style={{...S.card,textAlign:"center",color:C.muted,padding:"2rem"}}>All tools are currently checked in.</div>}
+          {liveOut.map(([id,co])=>{
+            const t=tools.find(x=>x.id===id);
+            return(
+              <div key={id} style={{...S.card,borderLeft:`3px solid ${C.yellow}`}}>
+                <div style={{display:"flex",flexWrap:"wrap",gap:"0.5rem",alignItems:"center",marginBottom:"0.6rem"}}>
+                  <span style={{fontWeight:800,fontSize:"0.95rem",color:C.text}}>{t?.name||id}</span>
+                  <span style={{fontSize:"0.7rem",color:C.muted,background:C.faint,padding:"0.1rem 0.45rem",borderRadius:4}}>{id}</span>
+                  <span style={S.chip(C.yellowBg,C.yellow)}>CHECKED OUT</span>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:"0.6rem"}}>
+                  {[["👤 Checked Out By",co.by,C.accentLt],["📍 Location",co.location,C.text],["🕐 Date & Time Out",co.outAt,C.yellow]].map(([lbl,val,color])=>(
+                    <div key={lbl} style={{background:C.bg,borderRadius:6,padding:"0.55rem 0.75rem"}}>
+                      <div style={{fontSize:"0.66rem",color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:"0.2rem"}}>{lbl}</div>
+                      <div style={{fontSize:"0.85rem",fontWeight:600,color}}>{val}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Full history */}
+      {tab==="history"&&(
+        <div>
+          <div style={{display:"flex",gap:"0.5rem",alignItems:"center",marginBottom:"0.75rem",flexWrap:"wrap"}}>
+            <h2 style={{...S.h2,margin:0,flex:1}}>Checkout History ({filtered.length})</h2>
+            <input style={{...S.inp,width:200}} placeholder="Filter by tool, person, location…" value={filter} onChange={e=>setFilter(e.target.value)}/>
+            <button style={S.btnA} onClick={exportAll}>Export CSV</button>
+            {history.length>0&&<button style={S.btnDel} onClick={clearHistory}>Clear All</button>}
+          </div>
+          {filtered.length===0&&<div style={{...S.card,textAlign:"center",color:C.muted,padding:"2rem"}}>No history yet.</div>}
+          {filtered.map((l,i)=>{
+            let dur="Still Out";
+            if(l.inAt){
+              const ms=new Date(l.inAt)-new Date(l.outAt);
+              if(!isNaN(ms)){const hh=Math.floor(ms/3600000),mm=Math.floor((ms%3600000)/60000);dur=`${hh}h ${mm}m`;}
+            }
+            return(
+              <div key={i} style={{...S.card,padding:"0.85rem 1rem",marginBottom:"0.5rem",borderLeft:`3px solid ${l.inAt?C.accentDim:C.yellow}`}}>
+                <div style={{display:"flex",flexWrap:"wrap",gap:"0.45rem",alignItems:"center",marginBottom:"0.6rem"}}>
+                  <span style={{fontWeight:700,fontSize:"0.9rem",color:C.text}}>{l.toolName}</span>
+                  <span style={{fontSize:"0.68rem",color:C.muted,background:C.faint,padding:"0.1rem 0.45rem",borderRadius:4}}>{l.toolId}</span>
+                  <span style={S.chip(l.inAt?C.greenBg:C.yellowBg,l.inAt?C.green:C.yellow)}>{l.inAt?"Returned":"Still Out"}</span>
+                  {l.inAt&&<span style={S.chip(C.faint,C.muted)}>⏱ {dur}</span>}
+                  <span style={{marginLeft:"auto",fontSize:"0.78rem",color:C.muted}}>by <strong style={{color:C.text}}>{l.by}</strong></span>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0.5rem"}}>
+                  <div style={{background:C.bg,borderRadius:6,padding:"0.5rem 0.7rem"}}>
+                    <div style={{fontSize:"0.64rem",color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:"0.15rem"}}>📍 Location</div>
+                    <div style={{fontSize:"0.82rem",color:C.text,fontWeight:600}}>{l.location}</div>
+                  </div>
+                  <div style={{background:C.bg,borderRadius:6,padding:"0.5rem 0.7rem",borderLeft:`2px solid ${C.accentLt}`}}>
+                    <div style={{fontSize:"0.64rem",color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:"0.15rem"}}>🕐 Checked Out</div>
+                    <div style={{fontSize:"0.82rem",color:C.text,fontWeight:600}}>{l.outAt}</div>
+                  </div>
+                  <div style={{background:C.bg,borderRadius:6,padding:"0.5rem 0.7rem",borderLeft:`2px solid ${l.inAt?C.green:C.yellow}`}}>
+                    <div style={{fontSize:"0.64rem",color:C.muted,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:"0.15rem"}}>✅ Checked In</div>
+                    <div style={{fontSize:"0.82rem",fontWeight:600,color:l.inAt?C.green:C.yellow}}>{l.inAt||"Not yet returned"}</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── ROOT ─────────────────────────────────────────────────────
+function App(){
+  const [loggedIn,setLoggedIn]=useState(()=>!!sessionStorage.getItem("ct_in"));
+  const [isAdmin,setIsAdmin]=useState(()=>!!sessionStorage.getItem("ct_adm"));
+  const [tech,setTech]=useState(()=>sessionStorage.getItem("ct_tech")||"");
+  const [nameIn,setNameIn]=useState("");
+  const [adminIn,setAdminIn]=useState("");
+  const [tab,setTab]=useState("dashboard");
+  const [tools,setTools]=useState(()=>{ const s=ld("ct_tools",null); return(s&&s.length)?s:TOOLS_DEFAULT; });
+  const [checkouts,setCheckouts]=useState(()=>ld("ct_co",{}));
+
+  useEffect(()=>sv("ct_tools",tools),[tools]);
+  useEffect(()=>sv("ct_co",checkouts),[checkouts]);
+
+  function login(){ sessionStorage.setItem("ct_in","1"); setLoggedIn(true); }
+  function logout(){ sessionStorage.clear(); setLoggedIn(false); setIsAdmin(false); setTech(""); }
+  function unlockAdmin(){ if(adminIn===ADMIN_CODE){ sessionStorage.setItem("ct_adm","1"); setIsAdmin(true); setAdminIn(""); } }
+  function setName(){ if(!nameIn.trim())return; sessionStorage.setItem("ct_tech",nameIn.trim()); setTech(nameIn.trim()); setNameIn(""); }
+
+  if(!loggedIn) return <Login onLogin={login}/>;
+
+  if(!tech) return(
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{width:310}}>
+        <div style={{textAlign:"center",marginBottom:"1.5rem"}}>
+          <div style={{fontSize:"1.8rem",fontWeight:900,color:C.accentLt,letterSpacing:"0.1em"}}>CALTRACK</div>
+        </div>
+        <div style={S.card}>
+          <h2 style={{fontSize:"1rem",fontWeight:700,color:C.text,marginBottom:"0.5rem"}}>Who are you?</h2>
+          <p style={{fontSize:"0.8rem",color:C.muted,marginBottom:"0.85rem"}}>Your name is attached to every checkout and test log.</p>
+          <label style={S.lbl}>Your Name</label>
+          <input style={S.inp} value={nameIn} onChange={e=>setNameIn(e.target.value)} onKeyDown={e=>e.key==="Enter"&&setName()} placeholder="e.g. Marcus T." autoFocus/>
+          <button style={{...S.btnA,width:"100%",marginTop:"0.85rem"}} onClick={setName}>Continue</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const PAGES=[["dashboard","Dashboard"],["tools","Tools"],["scout","Scout Pro 3"],["barcodes","Barcodes"],...(isAdmin?[["admin","⚙ Admin"]]:[])] ;
+
+  return(
+    <div style={{minHeight:"100vh",background:C.bg,color:C.text}}>
+      {/* Topbar */}
+      <div className="noprint" style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:"0 1.25rem",display:"flex",alignItems:"center",gap:"0.6rem",height:50,position:"sticky",top:0,zIndex:100}}>
+        <span style={{fontWeight:900,fontSize:"1rem",color:C.accentLt,letterSpacing:"0.08em",marginRight:"0.5rem"}}>CALTRACK</span>
+        {PAGES.map(([id,lbl])=>(
+          <button key={id} onClick={()=>setTab(id)} style={{background:tab===id?C.accent:"transparent",color:tab===id?"#fff":C.muted,border:"none",borderRadius:6,padding:"0.32rem 0.8rem",fontWeight:600,fontSize:"0.8rem",cursor:"pointer"}}>
+            {lbl}
+          </button>
+        ))}
+        <div style={{marginLeft:"auto",display:"flex",gap:"0.5rem",alignItems:"center"}}>
+          {!isAdmin&&(
+            <div style={{display:"flex",gap:"0.35rem"}}>
+              <input style={{...S.inp,width:120,padding:"0.28rem 0.6rem",fontSize:"0.78rem"}} type="password" placeholder="Admin code…" value={adminIn} onChange={e=>setAdminIn(e.target.value)} onKeyDown={e=>e.key==="Enter"&&unlockAdmin()}/>
+              <button style={{...S.btnB,padding:"0.28rem 0.65rem",fontSize:"0.76rem"}} onClick={unlockAdmin}>Unlock</button>
+            </div>
+          )}
+          {isAdmin&&<span style={S.chip(C.accentDim,C.accentLt)}>ADMIN</span>}
+          <span style={{fontSize:"0.78rem",color:C.muted}}>{tech}</span>
+          <button style={{...S.btnB,padding:"0.28rem 0.65rem",fontSize:"0.76rem"}} onClick={logout}>Sign Out</button>
+        </div>
+      </div>
+
+      {/* Page */}
+      <div style={S.page}>
+        {tab==="dashboard"&&<Dashboard tools={tools} checkouts={checkouts}/>}
+        {tab==="tools"&&<ToolsPage tools={tools} setTools={setTools} isAdmin={isAdmin} checkouts={checkouts} setCheckouts={setCheckouts} tech={tech}/>}
+        {tab==="scout"&&<ScoutPage tech={tech} isAdmin={isAdmin} tool={tools.find(t=>t.id==="T026")}/>}
+        {tab==="barcodes"&&<BarcodesPage tools={tools}/>}
+        {tab==="admin"&&<AdminPage tools={tools} checkouts={checkouts}/>}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
