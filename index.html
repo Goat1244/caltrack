@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0045)file:///C:/Users/langs/Downloads/index_4.html -->
+<!-- saved from url=(0045)file:///C:/Users/langs/Downloads/index_5.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -19,8 +19,8 @@ button,input,select,textarea{font-family:inherit}
 @media(max-width:680px){.dnm{display:none!important}.bnav{display:flex!important}.pc{padding-bottom:66px!important}}
 @media(min-width:681px){.bnav{display:none!important}}
 </style>
-<script src="./caltrack_files/react.production.min.js.download"></script>
-<script src="./caltrack_files/react-dom.production.min.js.download"></script>
+<script src="./CalTrack otf_files/react.production.min.js.download"></script>
+<script src="./CalTrack otf_files/react-dom.production.min.js.download"></script>
 </head>
 <body style="background: rgb(13, 17, 23); color: rgb(230, 237, 243);">
 <div id="app"><div style="min-height: 100vh; background: rgb(13, 17, 23); display: flex; align-items: center; justify-content: center; padding: 1rem;"><div class="fu" style="width: 100%; max-width: 360px;"><div style="text-align: center; margin-bottom: 2rem;"><div style="width: 52px; height: 52px; background: rgb(45, 143, 232); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 26px; margin: 0px auto 0.75rem;">🔧</div><div style="font-size: 1.75rem; font-weight: 900; color: rgb(230, 237, 243); letter-spacing: -0.02em;">CalTrack</div><div style="font-size: 0.8rem; color: rgb(139, 148, 158); margin-top: 0.2rem;">LL Blue Engineering</div></div><div style="background: rgb(28, 33, 40); border-radius: 14px; padding: 1rem 1.2rem; border: 1px solid rgb(48, 54, 61);"><div style="margin-bottom: 0.75rem;"><label style="display: block; font-size: 0.7rem; color: rgb(139, 148, 158); margin-bottom: 0.25rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Username</label><input value="" style="width: 100%; background: rgb(33, 38, 45); border: 1.5px solid rgb(48, 54, 61); border-radius: 8px; color: rgb(230, 237, 243); padding: 0.5rem 0.7rem; font-size: 0.9rem; outline: none; box-sizing: border-box;"></div><div style="margin-bottom: 1rem;"><label style="display: block; font-size: 0.7rem; color: rgb(139, 148, 158); margin-bottom: 0.25rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Password</label><input type="password" value="" style="width: 100%; background: rgb(33, 38, 45); border: 1.5px solid rgb(48, 54, 61); border-radius: 8px; color: rgb(230, 237, 243); padding: 0.5rem 0.7rem; font-size: 0.9rem; outline: none; box-sizing: border-box;"></div><button style="background: rgb(45, 143, 232); color: rgb(255, 255, 255); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; border-radius: 8px; padding: 0.75rem; font-weight: 700; font-size: 0.95rem; cursor: pointer; width: 100%;">Sign In →</button></div></div></div></div>
@@ -826,7 +826,7 @@ function AdminPage({tools,setTools,cos,setCos,user,addFeed,T}){
       ),
       DIV({style:card(T)},
         DIV({style:{fontSize:'0.71rem',fontWeight:700,color:T.mut,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:'0.75rem'}},'All Users ('+users.length+')'),
-        ...users.map(u=>React.createElement(UserRow,{key:u.id,u,T,changePass,removeUser}))
+        ...users.map(u=>React.createElement(UserRow,{key:u.id,u:u,T:T,changePass:changePass,removeUser:removeUser}))
       )
     ):null,
     // SITES
@@ -966,12 +966,12 @@ function App(){
   window._ctSetCos=setCos;
   window._ctAddFeed=addFeed;
 
-  if(!user)return React.createElement(Login,{onLogin:login,T});
-  if(pinLocked&&pinEnabled)return React.createElement(PinLock,{onUnlock:()=>setPinLocked(false),T});
+  if(!user)return React.createElement(Login,{onLogin:login,T:T});
+  if(pinLocked&&pinEnabled)return React.createElement(PinLock,{onUnlock:()=>setPinLocked(false),T:T});
 
   const PAGES=[['dashboard','🏠','Home'],['tools','🔧','Tools'],['scout','🔌','Scout'],['maintenance','🛠','Maint.'],['reports','📊','Reports'],['barcodes','🏷','Codes'],['profile','👤','Me'],['admin','⚙','Admin']];
 
-  const pageProps={tools,setTools,cos,setCos,user,setUser,addFeed,isAdmin,T};
+  const pageProps={tools:tools,setTools:setTools,cos:cos,setCos:setCos,user:user,setUser:setUser,addFeed:addFeed,isAdmin:isAdmin,T:T};
 
   return DIV({style:{minHeight:'100vh',background:T.bg,color:T.text}},
     // Top nav
@@ -987,7 +987,7 @@ function App(){
         BTN({style:{background:T.faint,color:T.mut,border:'1px solid '+T.border,borderRadius:7,padding:'0.25rem 0.5rem',fontSize:'0.8rem',cursor:'pointer'},onClick:()=>setDark(!dark)},dark?'☀️':'🌙'),
         isAdmin
           ?BTN({style:{background:T.accD,color:T.acc,border:'1px solid '+T.acc+'44',borderRadius:7,padding:'0.25rem 0.6rem',fontWeight:600,fontSize:'0.72rem',cursor:'pointer'},onClick:()=>setIsAdmin(false)},'Admin ✕')
-          :React.createElement(AdminUnlock,{onUnlock:()=>setIsAdmin(true),T}),
+          :React.createElement(AdminUnlock,{onUnlock:()=>setIsAdmin(true),T:T}),
         SPAN({style:{fontSize:'0.73rem',color:T.mut,fontWeight:500,maxWidth:65,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},user.name),
         BTN({style:{background:T.faint,color:T.mut,border:'1px solid '+T.border,borderRadius:7,padding:'0.25rem 0.55rem',fontWeight:600,fontSize:'0.73rem',cursor:'pointer'},onClick:logout},'Sign Out')
       )
@@ -998,9 +998,9 @@ function App(){
       tab==='tools'?React.createElement(ToolsPage,pageProps):null,
       tab==='scout'?React.createElement(ScoutPage,pageProps):null,
       tab==='maintenance'?React.createElement(MaintenancePage,pageProps):null,
-      tab==='reports'?React.createElement(ReportsPage,{tools,T}):null,
-      tab==='barcodes'?React.createElement(BarcodesPage,{tools,T}):null,
-      tab==='profile'?React.createElement(ProfilePage,{user,setUser,T}):null,
+      tab==='reports'?React.createElement(ReportsPage,{tools:tools,T:T}):null,
+      tab==='barcodes'?React.createElement(BarcodesPage,{tools:tools,T:T}):null,
+      tab==='profile'?React.createElement(ProfilePage,{user:user,setUser:setUser,T:T}):null,
       tab==='admin'?React.createElement(AdminPage,pageProps):null
     ),
     // Bottom nav mobile
