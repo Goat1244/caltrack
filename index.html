@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0045)file:///C:/Users/langs/Downloads/index_6.html -->
+<!-- saved from url=(0045)file:///C:/Users/langs/Downloads/index_8.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -995,24 +995,92 @@ function ReportsPage({tools,T}){
 }
 
 // ── BARCODES PAGE ─────────────────────────────────────────────
+function BarcodeCanvas({toolId,tag,name,T}){
+  const ref=useRef();
+  useEffect(()=>{
+    const canvas=ref.current;
+    if(!canvas)return;
+    const ctx=canvas.getContext('2d');
+    const W=320,H=100;
+    canvas.width=W;canvas.height=H;
+
+    // Background
+    ctx.fillStyle='#fff';
+    ctx.fillRect(0,0,W,H);
+
+    // Encode the tag string into bars using Code 128 style pattern
+    const data=tag+'|'+toolId;
+    const bars=[];
+
+    // Start pattern
+    bars.push(3,1,1,1,2,1); // start code B
+    // Encode each character
+    for(let i=0;i<data.length;i++){
+      const c=data.charCodeAt(i);
+      // Simple deterministic bar pattern per char
+      const v=((c*7+13)%11)+1;
+      const v2=((c*3+7)%7)+1;
+      const v3=((c*11+3)%9)+1;
+      bars.push(v%3+1,1,v2%3+1,1,v3%2+1,1);
+    }
+    // Stop pattern
+    bars.push(2,3,3,1,1,1,2);
+
+    // Draw bars
+    const totalUnits=bars.reduce((a,b)=>a+b,0);
+    const unitW=(W-20)/totalUnits;
+    let x=10;
+    ctx.fillStyle='#111';
+    for(let i=0;i<bars.length;i++){
+      const w=bars[i]*unitW;
+      if(i%2===0){ // dark bar
+        ctx.fillRect(Math.floor(x),4,Math.max(1,Math.floor(w)),H-24);
+      }
+      x+=w;
+    }
+
+    // Label text
+    ctx.fillStyle='#333';
+    ctx.font='bold 9px monospace';
+    ctx.textAlign='center';
+    ctx.fillText(tag+' — '+name.slice(0,28),W/2,H-4);
+  },[toolId,tag,name]);
+
+  return D('canvas',{ref,style:{display:'block',width:'100%',height:100,borderRadius:4}});
+}
+
 function BarcodesPage({tools,T}){
   return DIV({className:'fu'},
     DIV({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.1rem'}},
       D('h1',{style:{fontSize:'1.4rem',fontWeight:800,color:T.text,letterSpacing:'-0.02em'}},'Barcodes'),
-      BTN({style:{...btnA(T),background:T.text,color:T.bg},className:'np',onClick:()=>window.print()},'🖨 Print All')
+      D('button',{style:{background:T.text,color:T.bg,border:'none',borderRadius:9,padding:'0.48rem 1rem',fontWeight:700,fontSize:'0.82rem',cursor:'pointer'},className:'np',onClick:()=>window.print()},'🖨 Print All')
     ),
-    DIV({style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:'0.75rem'}},
-      ...tools.map(t=>{const d=du(t.nextCal);return DIV({key:t.id,style:{background:T.card,borderRadius:12,padding:'0.92rem',border:'1px solid '+T.border}},
-        DIV({style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.5rem'}},
-          DIV({style:{display:'flex',gap:'0.4rem',alignItems:'center'}},
-            SPAN({style:{fontSize:15}},CAT_I[t.cat]||'🔩'),
-            DIV(null,DIV({style:{fontWeight:700,fontSize:'0.83rem',color:T.text}},t.name),DIV({style:{fontSize:'0.65rem',color:T.mut}},t.tag))
+    DIV({style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:'0.75rem'}},
+      ...tools.map(t=>{
+        const d=du(t.nextCal);
+        return DIV({key:t.id,style:{background:'#fff',borderRadius:12,padding:'1rem',border:'1px solid '+T.border,boxShadow:'0 2px 8px rgba(0,0,0,0.08)'}},
+          // Tool info header
+          DIV({style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.6rem'}},
+            DIV(null,
+              DIV({style:{fontWeight:700,fontSize:'0.85rem',color:'#1a1a1a',marginBottom:'0.1rem'}},t.name),
+              DIV({style:{fontSize:'0.68rem',color:'#666'}},t.tag+' · '+t.cat)
+            ),
+            DIV({style:{textAlign:'right'}},
+              DIV({style:{fontSize:'0.68rem',color:'#666',marginBottom:'0.1rem'}},'Cal Due'),
+              DIV({style:{fontSize:'0.75rem',fontWeight:700,color:d===null?'#1a7f37':d<0?'#cf222e':d<=30?'#9a6700':'#1a7f37'}},t.nextCal||'Not set')
+            )
           ),
-          CalBadge({d,T})
-        ),
-        DIV({style:{background:T.faint,borderRadius:6,padding:'0.5rem',fontFamily:'monospace',fontSize:'0.65rem',color:T.mut,wordBreak:'break-all'}},t.id+' | '+t.tag+' | '+t.name),
-        DIV({style:{marginTop:'0.35rem',fontSize:'0.64rem',color:T.mut,display:'flex',justifyContent:'space-between'}},SPAN(null,'Due: '),SPAN({style:{color:T.text,fontWeight:700}},t.nextCal||'Not set'))
-      )})
+          // Barcode canvas
+          DIV({style:{background:'#fff',borderRadius:6,overflow:'hidden',border:'1px solid #e0e0e0',padding:'4px 0'}},
+            React.createElement(BarcodeCanvas,{toolId:t.id,tag:t.tag,name:t.name,T:T})
+          ),
+          // Footer
+          DIV({style:{display:'flex',justifyContent:'space-between',marginTop:'0.5rem',fontSize:'0.65rem',color:'#888'}},
+            SPAN(null,'ID: '+t.id),
+            SPAN(null,t.mfr||t.cat)
+          )
+        );
+      })
     )
   );
 }
