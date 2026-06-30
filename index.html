@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0046)file:///C:/Users/langs/Downloads/index_11.html -->
+<!-- saved from url=(0046)file:///C:/Users/langs/Downloads/index_12.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -1049,27 +1049,27 @@ function BarcodeCanvas({toolId,tag,name}){
     ctx.textAlign='center';
     ctx.textBaseline='top';
 
+    const topMargin=14;   // safety margin so nothing clips at the top edge
+    const sideMargin=18;
+
     // ── Row 1: Tool name (auto-shrink to fit one line) ──
-    let fontSize=18;
+    let fontSize=16;
     ctx.font='bold '+fontSize+'px Arial,sans-serif';
-    while(ctx.measureText(name).width>W-20&&fontSize>10){
-      fontSize--;
-      ctx.font='bold '+fontSize+'px Arial,sans-serif';
-    }
     let displayName=name;
-    while(ctx.measureText(displayName).width>W-20&&displayName.length>3){
+    while(ctx.measureText(displayName).width>W-sideMargin*2&&displayName.length>3){
       displayName=displayName.slice(0,-1);
     }
     if(displayName.length<name.length)displayName=displayName.slice(0,-1)+'…';
-    ctx.fillText(displayName,W/2,6);
+    ctx.fillText(displayName,W/2,topMargin);
 
-    // ── Row 2: Asset tag ──
-    ctx.font='bold 15px monospace';
-    ctx.fillText(tag,W/2,fontSize+10);
+    // ── Row 2: Asset tag (CT-xxx) ──
+    const tagY=topMargin+fontSize+8;
+    ctx.font='bold 17px monospace';
+    ctx.fillText(tag,W/2,tagY);
 
-    // ── Barcode bars (middle zone) ──
-    const barTop=fontSize+32;
-    const barH=92;
+    // ── Barcode bars ──
+    const barTop=tagY+26;
+    const barH=80;
     const data=tag;
     const bars=[];
     bars.push(3,1,1,1,2,1); // start guard
@@ -1083,9 +1083,8 @@ function BarcodeCanvas({toolId,tag,name}){
     bars.push(2,3,3,1,1,1,2); // stop guard
 
     const totalUnits=bars.reduce((a,b)=>a+b,0);
-    const margin=20;
-    const unitW=(W-margin*2)/totalUnits;
-    let x=margin;
+    const unitW=(W-sideMargin*2)/totalUnits;
+    let x=sideMargin;
     for(let i=0;i<bars.length;i++){
       const w=bars[i]*unitW;
       if(i%2===0){
@@ -1094,9 +1093,9 @@ function BarcodeCanvas({toolId,tag,name}){
       x+=w;
     }
 
-    // ── Bottom row: tool ID ──
-    ctx.font='11px monospace';
-    ctx.fillText(toolId,W/2,barTop+barH+5);
+    // ── Bottom row: tool ID (e.g. T012) ──
+    ctx.font='10px monospace';
+    ctx.fillText(toolId,W/2,barTop+barH+6);
 
   },[toolId,tag,name]);
 
