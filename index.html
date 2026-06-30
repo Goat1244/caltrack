@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0045)file:///C:/Users/langs/Downloads/index_8.html -->
+<!-- saved from url=(0046)file:///C:/Users/langs/Downloads/index_11.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -18,6 +18,12 @@ button,input,select,textarea{font-family:inherit}
 @media print{.np{display:none!important}}
 @media(max-width:680px){.dnm{display:none!important}.bnav{display:flex!important}.pc{padding-bottom:66px!important}}
 @media(min-width:681px){.bnav{display:none!important}}
+@media print{
+  @page{size:2in 1in;margin:0;}
+  body{margin:0;padding:0;}
+  .label-card{margin:0!important;padding:0!important;border:none!important;page-break-after:always;break-after:page;width:2in!important;height:1in!important;}
+  .label-card canvas{width:2in!important;height:1in!important;}
+}
 </style>
 <script>/**
  * @license React
@@ -944,16 +950,48 @@ function ReportsPage({tools,T}){
   const activeIds=new Set(hist.filter(h=>new Date(h.outAt)>thirtyAgo).map(h=>h.toolId));
   const idle=tools.filter(t=>!activeIds.has(t.id));
   function exportCal(){
+    // Standard cal report
     const h=['Asset Tag','Tool','Category','Condition','Next Cal','Status','Last Cal'];
     const rows=tools.map(t=>{const d=du(t.nextCal);return[t.tag,t.name,t.cat,t.cond,t.nextCal||'Not set',d===null?'N/A':d<0?'OVERDUE':d+'d',t.lastCal||'']});
     const blob=new Blob([[h,...rows].map(r=>r.map(v=>'"'+v+'"').join(',')).join('\n')],{type:'text/csv'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='cal_report.csv';a.click();
   }
+  function exportSortly(){
+    // Sortly-compatible CSV format
+    // Columns: Name, Description, Tags, Category, Notes, Price, Quantity, Min Quantity, SKU, Barcode
+    const h=['Name','Description','Tags','Category','Notes','Price','Quantity','Min Quantity','SKU','Barcode'];
+    const rows=tools.map(t=>{
+      const d=du(t.nextCal);
+      const status=d===null?'Cal: N/A':d<0?'Cal: OVERDUE':d<=30?'Cal due in '+d+' days':'Cal current';
+      const desc=[
+        t.mfr?'Manufacturer: '+t.mfr:'',
+        t.calNote?'Cal Note: '+t.calNote:'',
+        t.nextCal?'Next Cal: '+t.nextCal:'',
+        t.lastCal?'Last Cal: '+t.lastCal:'',
+        status
+      ].filter(Boolean).join(' | ');
+      return[
+        t.name,           // Name
+        desc,             // Description
+        'LL Blue Engineering',  // Tags
+        t.cat,            // Category
+        t.notes||'',      // Notes
+        '',               // Price
+        '1',              // Quantity
+        '1',              // Min Quantity
+        t.id,             // SKU (T001 etc)
+        t.tag             // Barcode (CT-001 etc)
+      ];
+    });
+    const blob=new Blob([[h,...rows].map(r=>r.map(v=>'"'+v+'"').join(',')).join('\n')],{type:'text/csv'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='caltrack_sortly_import.csv';a.click();
+  }
   function Bar({val,max,color}){return DIV({style:{background:T.faint,borderRadius:3,height:5,marginTop:'0.2rem'}},DIV({style:{background:color,borderRadius:3,height:5,width:Math.round((val/max)*100)+'%',transition:'width .5s'}}));}
   return DIV({className:'fu'},
     DIV({style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'1.1rem',flexWrap:'wrap',gap:'0.5rem'}},
       D('h1',{style:{fontSize:'1.4rem',fontWeight:800,color:T.text,letterSpacing:'-0.02em'}},'Reports'),
-      BTN({style:btnA(T),onClick:exportCal},'📄 Cal Report')
+      BTN({style:btnA(T),onClick:exportCal},'📄 Cal Report'),
+      BTN({style:btnA(T,{background:T.purple}),onClick:exportSortly},'📦 Export for Sortly')
     ),
     DIV({style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:'0.65rem',marginBottom:'1rem'}},
       ...[[hist.length,'📦','Checkouts',T.acc],[maint.length,'🔧','Maint.',T.yellow],[scout.length,'🔌','Tests',T.green],[passRate+'%','✅','Pass Rate',passRate>=90?T.green:T.yellow],['$'+maintCost.toFixed(2),'💰','Maint. Cost',T.orange]].map(([v,icon,lbl,color])=>
@@ -995,95 +1033,100 @@ function ReportsPage({tools,T}){
 }
 
 // ── BARCODES PAGE ─────────────────────────────────────────────
-function BarcodeCanvas({toolId,tag,name,T}){
+function BarcodeCanvas({toolId,tag,name}){
   const ref=useRef();
   useEffect(()=>{
     const canvas=ref.current;
     if(!canvas)return;
     const ctx=canvas.getContext('2d');
-    const W=320,H=100;
+    // 2in x 1in @ 203dpi = 406 x 203px — native ZD420 print resolution
+    const W=406,H=203;
     canvas.width=W;canvas.height=H;
 
-    // Background
     ctx.fillStyle='#fff';
     ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#000';
+    ctx.textAlign='center';
+    ctx.textBaseline='top';
 
-    // Encode the tag string into bars using Code 128 style pattern
-    const data=tag+'|'+toolId;
+    // ── Row 1: Tool name (auto-shrink to fit one line) ──
+    let fontSize=18;
+    ctx.font='bold '+fontSize+'px Arial,sans-serif';
+    while(ctx.measureText(name).width>W-20&&fontSize>10){
+      fontSize--;
+      ctx.font='bold '+fontSize+'px Arial,sans-serif';
+    }
+    let displayName=name;
+    while(ctx.measureText(displayName).width>W-20&&displayName.length>3){
+      displayName=displayName.slice(0,-1);
+    }
+    if(displayName.length<name.length)displayName=displayName.slice(0,-1)+'…';
+    ctx.fillText(displayName,W/2,6);
+
+    // ── Row 2: Asset tag ──
+    ctx.font='bold 15px monospace';
+    ctx.fillText(tag,W/2,fontSize+10);
+
+    // ── Barcode bars (middle zone) ──
+    const barTop=fontSize+32;
+    const barH=92;
+    const data=tag;
     const bars=[];
-
-    // Start pattern
-    bars.push(3,1,1,1,2,1); // start code B
-    // Encode each character
+    bars.push(3,1,1,1,2,1); // start guard
     for(let i=0;i<data.length;i++){
       const c=data.charCodeAt(i);
-      // Simple deterministic bar pattern per char
       const v=((c*7+13)%11)+1;
       const v2=((c*3+7)%7)+1;
       const v3=((c*11+3)%9)+1;
       bars.push(v%3+1,1,v2%3+1,1,v3%2+1,1);
     }
-    // Stop pattern
-    bars.push(2,3,3,1,1,1,2);
+    bars.push(2,3,3,1,1,1,2); // stop guard
 
-    // Draw bars
     const totalUnits=bars.reduce((a,b)=>a+b,0);
-    const unitW=(W-20)/totalUnits;
-    let x=10;
-    ctx.fillStyle='#111';
+    const margin=20;
+    const unitW=(W-margin*2)/totalUnits;
+    let x=margin;
     for(let i=0;i<bars.length;i++){
       const w=bars[i]*unitW;
-      if(i%2===0){ // dark bar
-        ctx.fillRect(Math.floor(x),4,Math.max(1,Math.floor(w)),H-24);
+      if(i%2===0){
+        ctx.fillRect(Math.round(x),barTop,Math.max(1,Math.round(w)),barH);
       }
       x+=w;
     }
 
-    // Label text
-    ctx.fillStyle='#333';
-    ctx.font='bold 9px monospace';
-    ctx.textAlign='center';
-    ctx.fillText(tag+' — '+name.slice(0,28),W/2,H-4);
+    // ── Bottom row: tool ID ──
+    ctx.font='11px monospace';
+    ctx.fillText(toolId,W/2,barTop+barH+5);
+
   },[toolId,tag,name]);
 
-  return D('canvas',{ref,style:{display:'block',width:'100%',height:100,borderRadius:4}});
+  return D('canvas',{ref:ref,style:{display:'block',width:'2in',height:'1in'}});
 }
+
 
 function BarcodesPage({tools,T}){
   return DIV({className:'fu'},
-    DIV({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.1rem'}},
+    DIV({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.1rem',flexWrap:'wrap',gap:'0.5rem'}},
       D('h1',{style:{fontSize:'1.4rem',fontWeight:800,color:T.text,letterSpacing:'-0.02em'}},'Barcodes'),
-      D('button',{style:{background:T.text,color:T.bg,border:'none',borderRadius:9,padding:'0.48rem 1rem',fontWeight:700,fontSize:'0.82rem',cursor:'pointer'},className:'np',onClick:()=>window.print()},'🖨 Print All')
+      DIV({style:{display:'flex',gap:'0.5rem'}},
+        DIV({style:{fontSize:'0.72rem',color:T.mut,alignSelf:'center'}},'2" × 1" — Zebra ZD420'),
+        D('button',{style:{background:T.text,color:T.bg,border:'none',borderRadius:9,padding:'0.48rem 1rem',fontWeight:700,fontSize:'0.82rem',cursor:'pointer'},className:'np',onClick:()=>window.print()},'🖨 Print All')
+      )
     ),
-    DIV({style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:'0.75rem'}},
-      ...tools.map(t=>{
-        const d=du(t.nextCal);
-        return DIV({key:t.id,style:{background:'#fff',borderRadius:12,padding:'1rem',border:'1px solid '+T.border,boxShadow:'0 2px 8px rgba(0,0,0,0.08)'}},
-          // Tool info header
-          DIV({style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.6rem'}},
-            DIV(null,
-              DIV({style:{fontWeight:700,fontSize:'0.85rem',color:'#1a1a1a',marginBottom:'0.1rem'}},t.name),
-              DIV({style:{fontSize:'0.68rem',color:'#666'}},t.tag+' · '+t.cat)
-            ),
-            DIV({style:{textAlign:'right'}},
-              DIV({style:{fontSize:'0.68rem',color:'#666',marginBottom:'0.1rem'}},'Cal Due'),
-              DIV({style:{fontSize:'0.75rem',fontWeight:700,color:d===null?'#1a7f37':d<0?'#cf222e':d<=30?'#9a6700':'#1a7f37'}},t.nextCal||'Not set')
-            )
+    DIV({style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:'0.85rem'}},
+      ...tools.map(t=>
+        DIV({key:t.id,className:'label-card',style:{background:'#fff',borderRadius:8,padding:'0.5rem',border:'1px solid '+T.border,display:'flex',flexDirection:'column',alignItems:'center',gap:'0.4rem'}},
+          DIV({style:{border:'1px dashed #ccc',padding:0,width:'2in',height:'1in',overflow:'hidden'}},
+            React.createElement(BarcodeCanvas,{toolId:t.id,tag:t.tag,name:t.name})
           ),
-          // Barcode canvas
-          DIV({style:{background:'#fff',borderRadius:6,overflow:'hidden',border:'1px solid #e0e0e0',padding:'4px 0'}},
-            React.createElement(BarcodeCanvas,{toolId:t.id,tag:t.tag,name:t.name,T:T})
-          ),
-          // Footer
-          DIV({style:{display:'flex',justifyContent:'space-between',marginTop:'0.5rem',fontSize:'0.65rem',color:'#888'}},
-            SPAN(null,'ID: '+t.id),
-            SPAN(null,t.mfr||t.cat)
-          )
-        );
-      })
-    )
+          DIV({style:{fontSize:'0.68rem',color:T.mut,textAlign:'center'}},t.cat)
+        )
+      )
+    ),
+    D('style',null,'@media print{.label-card{break-inside:avoid;page-break-inside:avoid;}}')
   );
 }
+
 
 // ── ADMIN PAGE ────────────────────────────────────────────────
 function UserRow({u,T,changePass,removeUser}){
@@ -1360,7 +1403,7 @@ function App(){
     ),
     // Page content
     DIV({className:'pc',style:{padding:'1rem',maxWidth:1080,margin:'0 auto'}},
-      tab==='dashboard'?React.createElement(Dashboard,{...pageProps,feed,ann,setAnn}):null,
+      tab==='dashboard'?React.createElement(Dashboard,{...pageProps,feed:feed,ann:ann,setAnn:setAnn}):null,
       tab==='tools'?React.createElement(ToolsPage,pageProps):null,
       tab==='scout'?React.createElement(ScoutPage,pageProps):null,
       tab==='maintenance'?React.createElement(MaintenancePage,pageProps):null,
