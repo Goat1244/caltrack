@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0046)file:///C:/Users/langs/Downloads/index_14.html -->
+<!-- saved from url=(0046)file:///C:/Users/langs/Downloads/index_15.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -1049,55 +1049,29 @@ function BarcodeCanvas({toolId,tag,name}){
     ctx.textAlign='center';
     ctx.textBaseline='top';
 
-    const sideMargin=16;
+    const sideMargin=14;
     const maxTextW=W-sideMargin*2;
 
-    // ── Wrap tool name across up to 2 lines, shrinking font if needed ──
-    let fontSize=15;
-    let lines=[];
-    do{
+    // ── Tool name — single line, shrink-to-fit, no wrapping, no truncation ──
+    let fontSize=20;
+    ctx.font='bold '+fontSize+'px Arial,sans-serif';
+    while(ctx.measureText(name).width>maxTextW&&fontSize>9){
+      fontSize--;
       ctx.font='bold '+fontSize+'px Arial,sans-serif';
-      const words=name.split(' ');
-      lines=[];
-      let cur='';
-      for(const w of words){
-        const test=cur?cur+' '+w:w;
-        if(ctx.measureText(test).width<=maxTextW){
-          cur=test;
-        }else{
-          if(cur)lines.push(cur);
-          cur=w;
-        }
-      }
-      if(cur)lines.push(cur);
-      if(lines.length>2)fontSize--;
-    }while(lines.length>2&&fontSize>8);
+    }
+    ctx.fillText(name,W/2,10);
 
-    // If still too long on a line even after shrinking, ellipsis-truncate that line
-    lines=lines.slice(0,2).map(line=>{
-      let l=line;
-      while(ctx.measureText(l).width>maxTextW&&l.length>3){
-        l=l.slice(0,-1);
-      }
-      if(l.length<line.length)l=l.slice(0,-1)+'…';
-      return l;
-    });
-
-    const nameTop=8;
-    const lineH=fontSize+3;
-    lines.forEach((line,i)=>ctx.fillText(line,W/2,nameTop+i*lineH));
-
-    // ── Asset tag (CT-xxx) ──
-    const tagY=nameTop+lines.length*lineH+4;
-    ctx.font='bold 16px monospace';
+    // ── Asset tag ──
+    const tagY=10+fontSize+8;
+    ctx.font='bold 18px monospace';
     ctx.fillText(tag,W/2,tagY);
 
-    // ── Barcode bars ──
-    const barTop=tagY+24;
-    const barH=H-barTop-20;
+    // ── Barcode bars — fills remaining space ──
+    const barTop=tagY+30;
+    const barH=H-barTop-8;
     const data=tag;
     const bars=[];
-    bars.push(3,1,1,1,2,1); // start guard
+    bars.push(3,1,1,1,2,1);
     for(let i=0;i<data.length;i++){
       const c=data.charCodeAt(i);
       const v=((c*7+13)%11)+1;
@@ -1105,7 +1079,7 @@ function BarcodeCanvas({toolId,tag,name}){
       const v3=((c*11+3)%9)+1;
       bars.push(v%3+1,1,v2%3+1,1,v3%2+1,1);
     }
-    bars.push(2,3,3,1,1,1,2); // stop guard
+    bars.push(2,3,3,1,1,1,2);
 
     const totalUnits=bars.reduce((a,b)=>a+b,0);
     const unitW=(W-sideMargin*2)/totalUnits;
@@ -1117,10 +1091,6 @@ function BarcodeCanvas({toolId,tag,name}){
       }
       x+=w;
     }
-
-    // ── Bottom row: tool ID (e.g. T012) ──
-    ctx.font='10px monospace';
-    ctx.fillText(toolId,W/2,barTop+barH+4);
 
   },[toolId,tag,name]);
 
